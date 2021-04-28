@@ -4,9 +4,9 @@ subtitle: "Graduate School Class Final Project"
 author: "Allyson Fierro"
 date: "March 2018"
 output:
-  pdf_document: default
-  word_document: default
   prettydoc::html_pretty: default
+  word_document: default
+  pdf_document: default
   html_document: default
 ---
 
