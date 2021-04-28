@@ -1,0 +1,532 @@
+---
+title: "R Code & Statisitcs Work Sample"
+subtitle: "Graduate School Class Final Project" 
+author: "Allyson Fierro"
+date: "March 2018"
+output:
+  pdf_document: default
+  word_document: default
+  prettydoc::html_pretty: default
+  html_document: default
+---
+
+```{r echo=TRUE}
+library(knitr)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+options(scipen = 4)
+```
+
+```{r echo=TRUE}
+nlsy.1 <- read.csv("http://www.andrew.cmu.edu/user/achoulde/94842/final_project/nlsy79/nlsy79_income.csv", header=TRUE)
+
+colnames(nlsy.1) <- c("VERSION_R25_2012",
+    "CASEID_1979",
+    "FAM-2A_1979",
+    "FAM-POB_1979",
+    "forgn.lang",
+    "FAM-3A_1979",
+    "FAM-RES_1979",
+    "FAM-6_1979",
+    "R_REL-1_COL_1979",
+    "SCHOOL-31_1979",
+    "MIL-6_1979",
+    "WOMENS-ROLES_000001_1979",
+    "WOMENS-ROLES_000002_1979",
+    "WOMENS-ROLES_000003_1979",
+    "WOMENS-ROLES_000004_1979",
+    "WOMENS-ROLES_000006_1979",
+    "WOMENS-ROLES_000007_1979",
+    "WOMENS-ROLES_000008_1979",
+    "EXP-OCC_1979",
+    "EXP-9_1979",
+    "race",
+    "sex",
+    "MARSTAT-KEY_1979",
+    "FAMSIZE_1979",
+    "pov.stat.1979",
+    "POLICE-1_1980",
+    "POLIC-1C_1980",
+    "POLICE-2_1980",
+    "ALCH-2_1983",
+    "DS-8_1984",
+    "DS-9_1984",
+    "Q13-5_TRUNC_REVISED_1990",
+    "POVSTATUS_1990",
+    "HGCREV90_1990",
+    "jobs.num",
+    "NUMCH90_1990",
+    "AGEYCH90_1990",
+    "DS-12_1998",
+    "DS-13_1998",
+    "INDALL-EMP.01_2000",
+    "CPSOCC80.01_2000",
+    "OCCSP-55I_CODE_2000",
+    "Q2-15B_2000",
+    "Q10-2_2000",
+    "Q13-5_TRUNC_REVISED_2000",
+    "FAMSIZE_2000",
+    "TNFI_TRUNC_2000",
+    "POVSTATUS_2000",
+    "MARSTAT-COL_2000",
+    "mar.stat.2000",
+    "MO1M1B_XRND",
+    "Q2-10B~Y_2012",
+    "INDALL-EMP.01_2012",
+    "OCCALL-EMP.01_2012",
+    "OCCSP-55I_CODE_2012",
+    "Q2-15A_2012",
+    "Q12-6_2012",
+    "income",
+    "Q13-5_SR000001_2012",
+    "Q13-5_SR000002_2012",
+    "Q13-18_TRUNC_2012",
+    "Q13-18_SR000001_TRUNC_2012",
+    "fam.size",
+    "REGION_2012",
+    "edu.attmnt",
+    "urban.rural.2012",
+    "JOBSNUM_2012")
+
+```
+
+**Data Summary**
+
+*Overview of the Data*
+
+The National Longitudinal Survey of Youth, 1979 surveyed youth ages 14-22. There 12,686 respondents in this survey and they were first surveyed in 1979 and then annually through 1994. Surveys after that point occurred biennially. 
+
+With this survey data, we will try to answer the questions, "Is there a significant difference in income between men and women? Does the difference vary depending on other factors?"
+
+In addition to the income and sex variables, I chose to observe if the difference in income is also present in variables indicating highest grade completed, race, if a foreign language was spoken in their home as a child, poverty status in 1979, marital status in 2000 and family size in 2012. 
+
+*Income Values*
+
+Before I created any summary tables or visualizations, I looked into the income variable in the data. Running the QQ plot below, I could see that the income variable is not normally distributed. The respondent's in the top 2% of earners are top coded. This is skewing the data. As you can see, the top earners are making the end tail heavier. 
+
+```{r echo=TRUE}
+#subset Data
+nlsy.2 <- nlsy.1[, c(5, 21, 22, 25, 50, 58, 63, 65)] 
+
+#Make education continuous
+#Creating new variable
+nlsy.2$edu.new <- NA
+nlsy.2$edu.new <- as.numeric(nlsy.2$edu.attmnt)
+
+#Map values
+nlsy <- mutate(nlsy.2,
+               forgn.lang = as.factor(mapvalues(forgn.lang,
+                            from = c(1, 0, -3),
+                            to = c("Yes", "No", NA))),
+               race = as.factor(mapvalues(race,
+                            from = c(1, 2, 3),
+                            to = c("Latino", "Black", "White"))),
+               sex = as.factor(mapvalues(sex,
+                            from = c(1,2),
+                            to = c("Male", "Female"))),
+               pov.stat.1979 = as.factor(mapvalues(pov.stat.1979,
+                            from = c(1, 0, -3),
+                            to = c("In Poverty" , "Not in Poverty", NA))),
+               mar.stat.2000 = as.factor(mapvalues(mar.stat.2000,
+                            from = c(0, 1, 6, -3, -5),
+                            to = c("Never Married", "Married", "Widowed", NA, NA))),
+               mar.stat.2000 = as.factor(mapvalues(mar.stat.2000,
+                            from = c(2, 3),
+                            to = rep("Separated or Divorced", 2))),
+               fam.size = as.factor(mapvalues(fam.size,
+                            from = c(5, 6, 7, 8, 9, 10, 11, 12, 16),
+                            to = rep("More than 4", 9))),
+               fam.size = as.factor(mapvalues(fam.size,
+                            from = c(-5),
+                            to = c(NA))),
+               edu.attmnt = as.factor(mapvalues(edu.attmnt,
+                            from = c(0, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+                            to = rep("!Less than HS", 10))),
+               edu.attmnt = as.factor(mapvalues(edu.attmnt,
+                            from = c(12),
+                            to = c("HS Grad"))),
+               edu.attmnt = as.factor(mapvalues(edu.attmnt,
+                            from = c(13, 14, 15),
+                            to = rep("Some College", 3))),
+               edu.attmnt = as.factor(mapvalues(edu.attmnt,
+                            from = c(16, 17, 18, 19, 20, -5),
+                            to = c("4th Year College", "5th Year College","6th Year College", "7th Year College", "8th Year College", NA))))
+
+#Omit missing values for income Variable
+nlsy$income[nlsy$income < 0] <- NA
+nlsy$edu.new[nlsy$edu.new < 0] <- NA
+```
+
+```{r echo=TRUE}
+#QQ Plot 
+
+with(nlsy, qqnorm(income))
+with(nlsy, qqline(income, col = "red"))
+
+#Omit topcoded values for income variable
+nlsy$income[nlsy$income == 343830] <- NA
+
+```
+
+Once I removed the top 2% earners, the income variable appeared to be as normally distributed as it could be as you can see below in the new QQ plot.
+
+```{r echo=TRUE}
+with(nlsy, qqnorm(income))
+with(nlsy, qqline(income, col = "red"))
+```
+
+*Variables*
+
+I renamed the variables I chose to:
+
+- edu.attmnt
+- sex
+- race
+- forgn.lang
+- fam.size
+- mar.stat.2000
+- pov.stat.1979
+
+I recoded the levels of sex to "Male" and "Female". For edu.attmnt. I named the years education below 12 as "Less than HS," 12 years as "HS Grad", 1st to 3rd year of college as "Some College" and the rest of the levels stayed the same when looking into 4th to 8th year of college or more. Race had three levels so I made Hispanic into Latino, Black into Black and Non-Hispanic and Non-Black to White. Family size was releveled after 4 children as "More than 4" and the number of children below that was left alone. Marital Status was put into "Married", "Never Married", "Separated or Divorced" and "Widowed." Lastly, poverty status was left as "In Poverty" and "Not in Poverty".
+
+I did remove rows from all of these variables as well. The rows I removed were invalid skips, valid skips or no-interview. Some variables such as mar.stat.2000 and fam.size needed to have the no-interviews removed because not all respondents were interviewed in 2000 for marital status and 2012 for family size.
+
+This does affect the data. However, this does not hinder our ability to observe the income difference between men and women. 
+
+These NA's are removed from all figures but not tables. 
+
+*Income Distribution*
+
+Looking at the distribution of income in the survey in Figure 1, we can see that there are more respondents earning less than $10,000, roughly.
+
+```{r echo=TRUE}
+#First look at income distribution for data
+
+#hist
+base.plot.income <- ggplot(data = nlsy) +
+  geom_histogram(aes(x = income)) +
+  xlab("Income") +
+  ggtitle("Fig.1--Distribution of Income")
+base.plot.income
+
+```
+
+*Average Income*
+
+```{r echo=TRUE}
+#Find Average Income
+avg.income <- round(mean(nlsy$income, na.rm = TRUE), 2)
+avg.income
+```
+
+```{r echo=TRUE}
+#summary table for income and sex
+sum.tab.sex <- ddply(nlsy, ~ sex, summarize, avg.income = round(mean(income, na.rm = TRUE), 2))
+sum.tab.sex
+```
+
+The average income for the respondent's (with the top earners taken out) is `r avg.income`. With our main question, looking into the income difference between men and women, I created the summary table below. We see that the average income for male respondents is `r sum.tab.sex [1,2]` dollars and the average income for females is `r sum.tab.sex [2,2]` dollars.
+
+Figure 2 is a visualization of the income difference between men and women. The average income for males is the black geo_vline and the average income for females is the yellow geo_vline.
+
+```{r echo=TRUE}
+#Overlaid Histogram--Income vs sex
+hist.income.sex <- base.plot.income + geom_histogram(aes(x = income, fill = sex)) +
+  geom_vline(xintercept = mean(nlsy$income[nlsy$sex == "Male"], na.rm = TRUE), color = "black") +
+  geom_vline(xintercept = mean(nlsy$income[nlsy$sex == "Female"], na.rm = TRUE), color = "yellow") +
+  ggtitle("Fig.2--Distribution of Income by Sex: Avg Income Lines")
+hist.income.sex
+
+```
+
+
+```{r echo=TRUE}
+#Creating new variable--income.avg
+nlsy$income.avg <- NA
+nlsy$income.avg[nlsy$income > 34844.25] <- "Above average"
+nlsy$income.avg[nlsy$income < 34844.25] <- "Below average"
+nlsy$income.avg <- as.factor(nlsy$income.avg)
+```
+
+**Proportion Plot**
+
+I was interested in seeing the respondent's below the average income and above the average income by education attainment. In Figure 3, we can see that the proportion of respondents who are below the average have less years of education while respondents with more education have above average income. This holds true for all years except from 8th year college or more.
+
+```{r echo=TRUE}
+
+#Proportion plot--education vs income.avg
+
+income.avg.new <- subset(nlsy, !is.na(nlsy$income.avg))
+
+edu.avgincome.plot <- ggplot(income.avg.new, aes(x = edu.attmnt, fill = income.avg)) +
+        geom_bar(position = "fill") +
+        theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1)) +
+        labs(x = "Educational Attainment", y = "Proportion", title = "Fig.3--Proportion Above and Below Average Income by Education")
+
+edu.avgincome.plot
+```
+
+*Income Differences*
+
+```{r echo=TRUE}
+
+#Difference in average income by education and sex--table
+
+mean.diff.edu <- ddply(nlsy, ~ edu.attmnt, summarize, 
+               mean.diff = round(mean(income[sex == "Male"], na.rm = TRUE) - 
+               mean(income[sex == "Female"], na.rm = TRUE), 2))
+mean.diff.edu
+```
+
+Looking at the difference in income between sexes, we can see that men earn more than women at most levels of education. What is interesting is that the income gap between the sexes increases as the year of education increases. The income gap is `r mean.diff.edu [1,2]` dollars for those with less than high school completed and that increases to `r mean.diff.edu [5,2]` dollars by 5th year college and higher completed. However, The 6th, 7th and 8th year of college completed do not follow this trend.
+
+These differences are also visualized in the bar chart below in Figure 4. It is easier to see that the 5th and 7th year of college completed do not follow these trends on the chart. 
+
+I will explore the statistical significance of the other variables I chose in the Finding sections. 
+
+```{r echo=TRUE}
+#subset out the NA's from edu
+mean.diff.edu.new <- subset(mean.diff.edu, !is.na(mean.diff.edu$edu.attmnt))
+
+#Distribution of average income by edcuation and sex--bar chart
+i.s.edu.fig <- ggplot(data = mean.diff.edu.new, 
+     aes(x = edu.attmnt, y = mean.diff)) +  
+geom_bar(stat = "identity", fill = "steelblue")+
+               theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1))+ 
+               labs(x = "Highest Grade Completed ", y = "Mean Income Difference", title = "Fig.4--Difference in Average Income by Education")
+i.s.edu.fig
+```
+
+
+```{r echo=TRUE}
+#Difference in average income by race and sex--table
+
+mean.diff.race <- ddply(nlsy, ~ race, summarize,
+            mean.diff = mean(income[sex == "Male"], na.rm = TRUE) - 
+            mean(income[sex == "Female"], na.rm = TRUE),
+            lower = t.test(income[sex == "Male"], income[sex == "Female"])$conf.int[1],
+            upper = t.test(income[sex == "Male"], income[sex == "Female"])$conf.int[2]
+                       )
+               
+mean.diff.race
+```
+
+In the table above, we can see how the difference in income is is still positive when observing men and women from different races. Black males earn `r mean.diff.race [2,2]` dollars which is a smaller income gap compared to white male and females at `r mean.diff.race [1,2]` dollars. Latino men and women have an income gap of `r mean.diff.race [3,2]` dollars. Looking at the confidence intervals, white men and women have the smallest range for an average income difference at `r mean.diff.race[1,4] - mean.diff.race[1,3]` dollars. The range of values for the average difference for black men and women is smaller at `r mean.diff.race[2,4]-mean.diff.race[2,3]` dollars. This difference between the groups is too small to draw any conclusions.
+
+Figure 5 illustrates the income gap by race. The error bars give some preliminary insight into looking at the race as being statistically significant in this project. The average difference between men and women for each race is between the lower and upper confidence intervals for each group so this will lead me to add sex into my linear model. 
+
+```{r echo=TRUE}
+#race--chart
+i.s.race.fig <- ggplot(mean.diff.race, aes(x = race, y = mean.diff)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+               labs(x = "", y = "Mean Diff of Earning Rates", title = "Fig.5--Difference in High Earning Rates by Employer")+
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                width = 0.2,
+                size = 1,
+                position = position_dodge(0.9),
+                color = "red")
+i.s.race.fig
+```
+
+```{r echo=TRUE}
+#Difference in average income by pov.stat and sex--table
+
+mean.diff.pov <- ddply(nlsy, ~ pov.stat.1979, summarize,
+            mean.diff = mean(income[sex == "Male"], na.rm = TRUE) - 
+            mean(income[sex == "Female"], na.rm = TRUE),
+            lower = t.test(income[sex == "Male"], income[sex == "Female"])$conf.int[1],
+            upper = t.test(income[sex == "Male"], income[sex == "Female"])$conf.int[2]
+                       )
+               
+mean.diff.pov
+```
+
+Excluding the NA's on the table with poverty status in 1979, men and women in poverty at the start of the survey, so between the ages of 14-22, have a smaller income gap at `r mean.diff.pov [2,2]` dollars compared to those not in poverty at `r mean.diff.pov [1,2]` dollars. 
+
+Figure 6 visualizes the differences from the table, but it excludes the NA values. The average difference in income between those in poverty and not in poverty appears to be statistically significant since the average difference is between the lower and upper values of the confiednce intervals for the two groups. With the range between upper and lower confidence intervals for these two groups being small as well, I did not investigate them any further.
+
+```{r echo=TRUE}
+#subset out NA's for poverty
+mean.diff.pov.new <- subset(mean.diff.pov, !is.na(mean.diff.pov$pov.stat.1979))
+
+#pov--chart
+i.s.pov.fig <- ggplot(mean.diff.pov.new, aes(x = pov.stat.1979, y = mean.diff)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+               labs(x = "", y = "Mean Diff of Earning Rates", title = "Fig.6--ifference in High Earning Rates by Employer")+
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                width = 0.2,
+                size = 1,
+                position = position_dodge(0.9),
+                color = "red")
+i.s.pov.fig
+```
+
+
+*Facet Grids*
+
+When looking into whether or not a foreign language was spoken at home and its relationship with income difference between men and women, I chose to represent that with a face grid visualization.
+
+Doing this is interesting to see the difference visually with the bar chart for those who did not speak a foreign language versus those who did. I did not run a t.test for this variable to see if it is statistically significant, but will include it in a linear model. 
+
+Figure 7 shows that the difference in income between men and women is smaller for those who did speak a foreign language at home than for men and women who did not.
+
+I cannot make any conclusions as to why this is, but I there can be multiple confounding factors to this such as citizenship status, generation of immigration, city of residence, education level of the respondent's parents, and so on.   
+
+```{r echo=TRUE}
+#Facet Grids
+
+fg.foreign <- ggplot(subset(nlsy, forgn.lang %in% c("No", "Yes")), aes(x = sex, y = income, fill=sex)) + geom_bar(stat = "identity") + facet_grid(.~forgn.lang) +  ggtitle("Fig.7--Female vs Male Income by Foregin Language Spoken at Home")
+fg.foreign
+```
+
+I was not able to run a t.test on marital status because it has more than two levels, so a facet grid displaying the income gap between those are married, separated or divorced, never married and widowed can be seen in Figure 8. In this data set, it is interesting that female widows appear to report a slightly higher income than widowed males. Females also appear to report higher income than males for those who are separated or divoreced which I also find interesting. The gap between males and females who were never married is smaller than those who are married. 
+
+All of these findings can might have confouding factors such as people who have never been married might work in sectors that would make the sex income gap smaller, or those who are separated or divorced in this data set, might be in sectors that have lower income to starts with. I would not use this facet grid to make conclusions about a population.
+
+```{r echo=TRUE}
+fg.martial <- 
+  ggplot(subset(nlsy, mar.stat.2000 %in% c("Never Married", "Married", "Separated or Divorced", "Widowed")), aes(x = sex, y = income, fill=sex)) + geom_bar(stat = "identity") + facet_grid(.~mar.stat.2000) +
+  ggtitle("Fig.8--Female vs Male Income by Marital Status")
+fg.martial
+
+```
+
+I also wanted to observe family size reported in 2000 so I created another facet grid for this variable in Figure 9. A t-test was also not possible due to the multiple levels of this variable. 
+
+My baseline for this data is people who have two children since that is the most common. This baseline is seen in the charts since two children is the first level shown. When looking at family size, across the board, men earn more than women. Whether or not this variable is statistially significant will be explored in my linear model.
+
+```{r echo=TRUE}
+fg.family <- ggplot(subset(nlsy, fam.size %in% c("1", "2", "3", "4", "More than 4")), aes(x = sex, y = income, fill=sex)) + geom_bar(stat = "identity") + facet_grid(.~fam.size) +
+  ggtitle("Fig.9--Female vs Male Income by Family Size")
+fg.family
+```
+
+*Linear Models*
+
+```{r echo=TRUE}
+#Linear Model
+relevelToMostFrequent <- function(x) {
+  if (is.factor(x)) {
+    # Determine most frequent category
+    most.freq.level <- levels(x)[which.max(table(x))]
+    # Relevel to set most frequent category as the baseline
+    relevel(x, ref = most.freq.level)
+  } else {
+    x
+  }
+}
+# Re-level the data
+nlsy <- as.data.frame(lapply(nlsy, FUN = relevelToMostFrequent))
+sapply(nlsy, function(x){ifelse(is.factor(x), levels(x)[1], NA)})
+
+overall.pract.lm <- lm(income ~ sex + edu.attmnt + race + pov.stat.1979 + mar.stat.2000 + forgn.lang + fam.size, data = nlsy)
+
+sum.overall.pract.lm <- summary(overall.pract.lm)
+  
+#Make it look pretty
+kable(sum.overall.pract.lm$coef)
+```
+
+I ran a preliminary linear model to see which variables were not statiscally significant. I was not able to run t-tests on all variables so I used the p-values in the summeary of the linear model to make conclusions about statistical significance. 
+
+Since I looked at confidence intervals for race, I will keep that variable even though the coefficient for a male Latino is not statistically significant at 0.79.After looking at my baselines, I made the decision to only include variables that have a p-value of 0 in my coefficients chart. I wanted to ensure that my variables were going to be significant at the 0.05 level. Therefore I did not include, martial status, family size, or whether a foreign language was spoken in the home in the linear model I will interpret next. 
+
+```{r echo=TRUE}
+#Better lm
+overall.lm <- lm(income ~ sex + edu.attmnt + race + pov.stat.1979, data = nlsy)
+
+sum.overall.lm <- summary(overall.lm)
+
+
+#Make it look pretty
+kable(sum.overall.lm$coef)
+```
+
+Running this linear model, I can see that all of the p-values are statistically signficant with the exception of the Latino level in the race variable with a p-value of 0.31 which is not statistically significant at a 0.05 level or even a 0.1 level for that matter. 
+
+My baseline for this linear model is, holding all else constant, a white male who completed 12th grade (HS), and who was not in poverty at the age of 14 to 22 in 1979. That person has an average income of $39,759.29. Starting from there I am able to look at other coefficients and what they show about the income gap. 
+
+Whites males who finished high schools but were in poverty, have an average income of $32,962.77.
+
+White females who finished high school and were not in poverty have an average income of 23,747.27 dollars. For a white female who finished high school but was in poverty, their average income is 16,950.75 dollars. 
+
+Black males who finished high school and were not in poverty, have an average income of $31,570.64. For black females with those same characteristics, their average income is 15,558.62 dollars.
+
+Latinos who finished high school and were not in poverty have an average income of .For Latinas with the same characteristics, their average income is.
+
+I am interested in observing these same characteristics for those who have completed a 4th year of college and were in poverty. 
+
+White males who completed the 4th year of college and were in poverty had an average income of 60,934 dollars. White females with the same characteristics had an average income of 44,922 dollars.
+
+
+Black males who completed the 4th year of college and were in poverty had an average income of 52,746 dollars. Black females with the same characteristics had an average income of 36,734 dollars.
+
+
+Latinos who completed the 4th year of college and were in poverty had an average income of 59,763 dollars. Latinas with the same characteristics had an average income of 43,741 dollars.
+
+*Diagnostic Plots*
+
+```{r echo=TRUE}
+plot(overall.lm)
+```
+
+Looking at the plots from my linear model, I am able to see that my model can be said to have a linear-relationship. From the Residuals vs Fitted plot we see that there is almost a fan shape. This violates the assumption that there is constant variance in my model. My model can be used to explain there is, on average, an income gap between men and women, but I cannot say that is true always with the lack of confidence in constant variance. I would need to look at the scale-location plot to confirm.
+
+The QQ-plot shows that the data is as normal as it can be with a heavier tail on the right. This might be caused by the outlier at 4146. 
+
+The Scale-location plot does show that there is not constant variance for every variable in my linear model. It looks better than I had hoped, but there is still not constant variance across the board. 
+
+The Residual versus Leverage helps me see if there are any influential outliers. I see two outliers with numbers that appear to be 120 and 510. These outliers are not past Cook's distance so I can conclude that these outliers are not influential. 
+
+**Scatterplot**
+
+After looking at the coefficients of my liner model, I wanted to investigate further into one of the variables and I chose poverty. A few plots were made, and I found the plot in Figure 10 the most interestng.
+
+Education is always my main area of interest so I created a new education variable that is continuous at the beginning to use it to create a scatter plot. Figure 10 shows how those in poverty and those not in poverty earn higher income with increased years of education. What was most interesting is that after year 17 (5th year college complete) but before year 20 (8th year college completed), those in poverty in 1979, on average, earn a higher income than those who were not in poverty in 1979. 
+
+```{r echo=TRUE}
+#Poverty plot
+
+intercepts <- c(coef(overall.lm)["(Intercept)"],
+                coef(overall.lm)["(Intercept)"] + coef(overall.lm)["pov.stat.1979In Poverty"])
+
+lines.df <- data.frame(intercepts = intercepts,
+                       slopes = rep(coef(overall.lm)["income"], 2),
+                       poverty = levels(nlsy$pov.stat.1979))
+
+poverty.geom.plot <- ggplot(subset(nlsy, pov.stat.1979 %in% c("Not in Poverty", "In Poverty")),  aes(x = edu.new, y = income, color = pov.stat.1979)) +
+  geom_point() +
+  geom_abline(aes(intercept = intercepts, 
+                  slope = slopes, 
+                  color = poverty), data = lines.df) +
+  geom_jitter(alpha = 0.1) +
+  geom_smooth(fullrange = TRUE) +
+  ggtitle("Fig.10--Income Earnings by Years of Education for Poverty Status")
+
+poverty.geom.plot
+
+```
+
+*Methodolgy*
+
+**Missing Values**
+
+As discussed prior, I removed NA's from my data set. I made the top 2% of earners in the income variable NA's to get a better picture of average income for the average person. 
+
+The NA'S for my other variables were created because they were simply missing values. They were removed from my bar charts but not from my tables. 
+
+**Tables, Charts, Findings**
+
+Throughout this project, I attempted many charts and charts. Some of the things I chose not to add can be seen in my Rmd file. 
+
+The tables and plot I did produce presented trends I expected to observe, like men earning more than women on average. This is not an absolute of course depending on the situation and different bar charts showed this such as Figure 8. I was also surprised in the trend I observed in Figure 4. There is a certain point where more years of education will not increase a person's income, on average. 
+
+After running extra tables and charts, the relationship I chose to not leave out is the one in Figure 10. I'm sure if I explored multiple variables in the data set I would have more interesting findings. Anything that was not already discussed to some extent in my findings was omitted and can be seen on my Rmd file. 
+
+*Discussion*
+
+**Conclusions**
+Considering the size of the data set and that it is a longitudinal survey that is supposed to be representative of the population, I can conclude that there is an income gap between men and women. This income gap also spreads to other areas such as poverty status during youth, race, education attainment and so on. 
+
+With the variables I selected, I do not believe that there are many confounding variables. I believe that individual idiosyncrasies were controlled for when the survey was conducted. 
