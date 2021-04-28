@@ -1,0 +1,80 @@
+---
+title: "Untitled"
+author: "Allyson Fierro"
+date: "September 19, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(shiny)
+library(shinydashboard)
+library(reshape2)
+library(dplyr)
+library(plotly)
+library(shinythemes)
+library(readxl)
+library(tidyverse)
+
+Ben <- read_excel("~/GitHub/Project1_afierro/app/Benedum.xlsx")
+colnames(Ben) <- c("Area", "Organization", "Amt")
+Ben$name <- as.factor(Ben$Organization)
+
+Spark <- read_excel("~/GitHub/Project1_afierro/app/Spark.xlsx")
+colnames(Spark) <- c("Amt", "Name")
+Spark$name <- as.factor(Spark$Name)
+
+APOST <-read_excel("~/GitHub/Project1_afierro/app/APOST.xls")
+
+mAPOST <- melt(APOST, id.vars = "Organization")
+mAPOST$variable <- NULL
+
+
+```
+
+```{r}
+
+mAPOST %>% 
+        drop_na(value) %>%
+ggplot(aes(x = value, fill = "value", na.rm = TRUE)) + 
+  geom_bar(stat = "count") + 
+  labs(x = "Program Focus Areas", y = "Number of Programs", title = "APOST Programs' Focus Areas") +
+  theme(legend.position="none")
+
+```
+
+
+```{r}
+ggplot(data = mAPOST, aes(x = value)) + geom_bar()
+
+```
+
+```{r}
+
+Spark %>% 
+  group_by(Name) %>% 
+  summarise(Amt = sum(Amt))
+
+  ggplot(data = Spark, aes(x = Name, y = Amt)) +
+           geom_bar(stat = "identity", fill = "#663096") +
+     labs(x = "Grantee", y = "Total Amount Awarded", title = "Spark Grants") +
+      coord_flip() +
+    theme(legend.position="none")
+```
+
+
+
+```{r}
+
+Ben %>% 
+  group_by(Organization) %>% 
+  summarise(Amt = sum(Amt)) %>%
+  drop_na(Amt) %>%
+
+  ggplot(aes(x = Organization, y = Amt, fill = "Amt")) +
+           geom_bar(stat = "identity") +
+     labs(x = "Organization", y = "Total Amount Awarded", title = "Benedum Grants") +
+      coord_flip() +
+    theme(legend.position="none")
+```
+
