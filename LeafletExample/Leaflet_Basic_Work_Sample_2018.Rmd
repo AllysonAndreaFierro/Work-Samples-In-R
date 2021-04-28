@@ -1,0 +1,87 @@
+---
+title: "Los Angeles Open Source Geo Hub Data"
+subtitle: "Basic Leaflet Work Sample usin APIs" 
+author: "Allyson Fierro"
+date: "2018"
+output:
+  prettydoc::html_pretty: default
+  html_document: default
+---
+
+```{r echo=FALSE}
+#Loading libraries
+library(rgdal)
+library(knitr)
+library(leaflet)
+library(leaflet.extras)
+library(dplyr)
+library(readxl)
+library(stringr)
+```
+
+```{r echo=FALSE}
+#Open source Los Angeles, CA GeoHub data 
+
+#Historic earthquakes (points)
+quakes.point <- readOGR("https://opendata.arcgis.com/datasets/373a48047cd4473fbb0d02a878c9d13f_62.geojson")
+
+#High injury network (lines)
+hwinjury.lines <- readOGR("https://opendata.arcgis.com/datasets/4ba1b8fa8d8946348b29261045298a88_0.geojson")
+
+#Demographic data (polygons)
+demog.poly <- readOGR("https://opendata.arcgis.com/datasets/2f11013d1302419aac243d6e1c56568f_0.geojson")
+```
+
+$\textbf{Historic earthquakes in LA County}$
+
+This map shows clusters of historic earthquakes in Los Angeles County. Zoom in to view smaller clusters or the location of a specific earthquake. You can also select which base map you would like to view on the top right of the map. 
+```{r echo=FALSE}
+leaflet(quakes.point) %>%
+  addProviderTiles("Esri.WorldImagery", group = "Base") %>%
+  addProviderTiles("Esri.WorldTerrain", group = "Terrain") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "DarkMatter") %>%
+  addLayersControl(
+    baseGroups = c("Base", "Terrain", "Dark Matter"),
+    options = layersControlOptions(collapsed = FALSE)) %>%
+  addMarkers(
+    clusterOptions = markerClusterOptions()
+)
+```
+
+$\textbf{High Injury Network}$
+
+The injury network represent a small amount of streets, but many serious injuries including death. The network is to provide a guide to help prioritize efforts for achieving zero traffic deaths. 
+
+Zoom in to view street names and select which base map you would like to view on the top right of the map. 
+```{r echo=FALSE}
+leaflet(data = hwinjury.lines) %>%
+  addProviderTiles("Esri.WorldImagery", group = "Base") %>%
+  addProviderTiles("Esri.WorldTerrain", group = "Terrain") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "DarkMatter") %>%
+  addLayersControl(
+    baseGroups = c("Base", "Terrain", "Dark Matter"),
+    options = layersControlOptions(collapsed = FALSE)) %>%
+  addPolylines(color = "red")
+```
+
+$\textbf{Hispanic/Latino Demographics by Neighborhood}$
+
+This map shows 2018 data the Hispanic/Latino population in LA County by neighborhood. It is in a choropleth style. 
+```{r echo=FALSE}
+bins <- stats::quantile(demog.poly$hislat)
+pal <- colorBin(c("#f7f7f7","#cccccc","#969696","#636363","#252525"), domain = demog.poly$hislat, bins = bins)
+
+leaflet(demog.poly) %>%
+  addProviderTiles("OpenStreetMap.Mapnik") %>%
+  addPolygons(
+    fillColor = ~pal(hislat),
+    weight = 2,
+    fillOpacity = .8,
+    color ="white"
+  ) %>%
+  addLegend(position = "topright" , pal = pal, values = demog.poly$hislat, title = "Hispanic/Latinos by Neighborhood", labFormat = labelFormat (digits = 0))
+
+```
+
+$\textbf{All data found at:}$
+https://geohub.lacity.org/
